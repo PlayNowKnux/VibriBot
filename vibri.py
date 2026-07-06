@@ -6,6 +6,8 @@ import requests, time, sys, os, datetime, re
 from cue import *
 import discord
 import discord.app_commands
+import yt_dlp
+
 
 # Get tokens
 tokens = open("tokens.txt", "r").read().split("\n")
@@ -13,7 +15,7 @@ reg_token = tokens[0]  # Regular token is on first line
 dev_token = tokens[1]  # Developer token is on second line
 
 # Set version number
-version_num = "2.2.1"
+version_num = "2.2.2"
 
 # Set help text
 help_text = """
@@ -76,7 +78,7 @@ slurs = open("slurs.txt", "r").read().split("\n")
 
 # Developer mode toggle
 try:
-    with open('dev', 'r') as f:
+    with open('debug', 'r') as f:
         if f.read().strip().lower() == "false":
             dev_mode = False
         else:
@@ -181,7 +183,7 @@ def slap_react():
 # Execution
 def execution_countdown():
     today = datetime.date.today()
-    future = datetime.date(2021, 7, 2)
+    future = datetime.date(2027, 7, 1)
     diff = future - today
     if (diff.days == 0):
         return "Vibri will be publicly executed today."
@@ -475,13 +477,11 @@ async def _rate(interaction: discord.Interaction, thing: str):
 async def _slap(interaction: discord.Interaction):
     await interaction.response.send_message(slap_react())
 
-# Commented out because the PS3 store is not shutting down for now
 # /execution
-"""
 @tree.command(name="execution", description="Countdown to Vibri's public execution on the PS3 store")
 async def _execution(interaction: discord.Interaction):
     await interaction.response.send_message(execution_countdown())
-"""
+
 
 # /say
 @tree.command(name="say", description="Vibri says anything you want her to!")
@@ -646,6 +646,8 @@ async def on_message(message):
     elif msg == "!vib file":
         if dev_mode:
             await message.channel.send(file=discord.File("hon/vibrihonpg4.png"))
+    elif msg == '!vib execution':
+        await message.channel.send(execution_countdown())
 
 
 # -- Startup assistance -- #
