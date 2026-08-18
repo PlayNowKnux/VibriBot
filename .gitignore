@@ -1,5 +1,7 @@
-tokens.txt
-cue_test.py
-vibribbot.py
-__pycache__
-vibscore/__pycache__
+__pycache__/
+*.pyc
+.env
+HyperSugar/native/build
+HyperSugar/bin
+HyperSugar/__pycache__
+HyperSugar/bin

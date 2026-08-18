@@ -1,0 +1,2 @@
+replace this line with your normal token
+replace this line with a dev token if you're using another bot to test this
