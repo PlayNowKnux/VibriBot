@@ -17,13 +17,14 @@ reg_token = tokens[0]  # Regular token is on first line
 dev_token = tokens[1]  # Developer token is on second line
 
 # Set version number
-version_num = "2.2.2"
+version_num = "2.3.0"
 
 # Set help text
 help_text = """
 
 Thank you for adding Vib-RiBot (Discord edition)
 This is loosely based off of the former Twitter bot (@VibRibot) by Zeriben
+HyperSugar (the TTS engine) was created by spiralpsych
 Problems? Tell @playnow.bsky.social on Bluesky
 
 Press the "/" key for the slash command menu!
@@ -612,7 +613,7 @@ async def on_message(message):
     elif msg.startswith("!vib cue"):
         await message.channel.send(ctry(message.content))
 
-    elif msg == "!vib ttsinfo":
+    elif msg == "!vib ttsinfo" || msg == "!vib help tts":
         await message.channel.send(TTS_INFO)
 
     elif msg.startswith("!vib tts ") or msg.startswith("!vib msheet "):
