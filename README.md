@@ -11,7 +11,7 @@
 ## Tokens
 For tokens, get some bot tokens and place them in tokens.txt. The first line is the normal token and the second line is the developer token.
 
-It will be in developer mode by default. To take it out of developer mode, delete the file `dev` or change the contents of `dev` to be `false`.
+It will be in developer mode by default. To take it out of developer mode, delete the file `debug` or change the contents of `debug` to be `false`.
 
 You might want to make 2 bots if you want a development bot.
 
