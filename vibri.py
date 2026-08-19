@@ -613,7 +613,7 @@ async def on_message(message):
     elif msg.startswith("!vib cue"):
         await message.channel.send(ctry(message.content))
 
-    elif msg == "!vib ttsinfo" || msg == "!vib help tts":
+    elif msg == "!vib ttsinfo" or msg == "!vib help tts":
         await message.channel.send(TTS_INFO)
 
     elif msg.startswith("!vib tts ") or msg.startswith("!vib msheet "):

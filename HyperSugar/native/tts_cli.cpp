@@ -185,11 +185,11 @@ std::vector<Mora> analyze_lyric(const std::string& text) {
 }
 
 bool is_standalone_sokuon(const std::string& lyric) {
-    return lyric == u8"っ" || lyric == u8"ッ";
+    return lyric == "っ" || lyric == "ッ";
 }
 
 bool is_standalone_long_mark(const std::string& lyric) {
-    return lyric == u8"ー";
+    return lyric == "ー";
 }
 
 bool phone_is_vowel(char phone) {
