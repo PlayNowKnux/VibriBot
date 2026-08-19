@@ -2,7 +2,9 @@
 
 from random import randint, choice
 from vibscore import render
-import requests, time, sys, os, datetime, re
+from HyperSugar.discord_commands import PRESETS, TTS_INFO, TtsError, _run_native, register_tts_commands
+import asyncio, requests, time, sys, os, datetime, re, tempfile
+from pathlib import Path
 from cue import *
 import discord
 import discord.app_commands
@@ -38,6 +40,10 @@ Commands:
 `!vib nus` - nus!
 `!vib stroke` - Vibri has a stroke reading the above text and fudging dies
 `!vib say` - Vibri says what you want her to say!
+`!vib tts <preset> <bpm> <time_den> <notesheet>` - HyperVoice music sheet
+`!vib msheet <preset> <bpm> <time_den> <notesheet>` - Same as `!vib tts`
+`!vib ttsquick <preset> <bpm> <source_note> <phrase>` - Quick HyperVoice TTS
+`!vib ttsinfo` - HyperVoice syntax help
 `!vib rate` - Vibri rates your meme, poem, art piece, or any attachment!
 `!vib number <n>` Vibri translates a base 10 number (<n>) into Vib-Ribbon shapes!
 `!vib tpose` Vibri T-poses
@@ -46,20 +52,20 @@ Commands:
 > **<filename>** should be in quotes, e.g. "Song.wav"
 > **<instruction>** can be one of two things:
 > \\*<n> or %<timestamps>
->     \\*<n> repeats the song <n> times, for example, 
+>     \\*<n> repeats the song <n> times, for example,
 >         `!vib cue "Song.wav" *10`
 >     will give a cue file that has Song.wav listed 10 times
-> 
+>
 >     %<timestamps> works like this:
 >     Say you have a file that is structured like this:
->     
+>
 >     Track 1: 00:00:00 - 01:00:00
 >     Track 2: 01:00:00 - 01:59:00
 >     Track 3: Pregap 01:59:00; 02:00:00 - end of disc
-> 
+>
 >     You would enter:
 >        `!vib cue "test song.wav" %00:00:00|01:00:00|01:59:00?02:00:00`
->     
+>
 >     **%**XX:XX:XX - beginning of track list
 >     **|**XX:XX:XX - next track
 >     **|**PP:PP:PP**?**XX:XX:XX - track with pregap
@@ -204,6 +210,28 @@ def vib_say(m, usingSlash):
     return m[9:]  # Used to crop out "!vib say"
 
 
+# !vib tts functions
+async def send_legacy_tts_file(message, render_call):
+    temp_path = Path(tempfile.gettempdir()) / f"vibri-{message.id}.wav"
+    try:
+        await asyncio.to_thread(render_call, temp_path)
+        await message.channel.send(file=discord.File(temp_path, filename="vibri.wav"))
+    except TtsError as error:
+        await message.channel.send(f"Game over! {error}")
+    except Exception as error:
+        print(f"Mojib TTS failed: {error}")
+        await message.channel.send("Game over! Vibri could not synthesize that sheet.")
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def legacy_tts_preset(value):
+    preset = value.lower()
+    if preset not in PRESETS:
+        raise TtsError(f"Unknown preset. Use: {', '.join(PRESETS)}")
+    return preset
+
+
 # !vib cue functions
 
 def old_cue(m):
@@ -222,13 +250,13 @@ def old_cue(m):
         for i in range(1, count + 1):
             if cue_zero_pad(i) == "ERR": # cue_zero_pad is a zero-padding function
                 return "Game over! Too many tracks."
-            
+
             ret += "FILE \"" + file + "\" BINARY\n"
             ret += "\tTRACK " + cue_zero_pad(i) + " AUDIO\n"
             ret += "\t\tINDEX 01 00:00:00\n"
-        
+
         prod = "```\n" + ret + "\n```"
-        
+
         if len(prod) > 1999:
             return "Game over! The CUE file is too long!"
         return prod
@@ -248,7 +276,7 @@ def old_cue(m):
             else:
                 ret += "    INDEX 01 " + i + "\n"
         prod = "```\n" + ret + "\n```"
-        
+
         if len(prod) > 1999:
             return "Game over! The CUE file is too long."
         return prod
@@ -267,11 +295,11 @@ def cue(message):
     name = mtch.group('name')
     if not name:
         return "Game over! Couldn't detect a filename! Make sure you're surrounding the filename with quotation marks!"
-    
+
     args = mtch.group('args')
     if not args:
         return "Game over! Couldn't detect a valid argument structure! Type !vib help for an example"
-    
+
     if args.startswith('*'):
         args = args.replace('*', '').strip()
         repeat_times = int(args)
@@ -284,7 +312,7 @@ def cue(message):
         sheet.audiofiles = [audiofile] * repeat_times
 
         return sheet.render()
-    
+
     elif args.startswith('%'):
         # get the groups matched and take off the first character (either %, |, or ?)
         chunks = [(m[1][1:], m[2][1:]) for m in chunk_re.findall(args)]
@@ -299,7 +327,7 @@ def cue(message):
                 start = CUETimestamp.from_string(chunk[1])
 
             tracks.append(CUETrack(start_time=start, pregap=pregap))
-        
+
         audiofile = CUEAudioFile(filename=name, tracks=tracks)
         sheet = CUESheet(audiofiles=[audiofile])
 
@@ -314,12 +342,12 @@ def ctry(m):
 
         if result.startswith("Game over!"):
             return result
-        
+
         result = f"```{result}```"
 
         if len(result) >= 2000:
             return "Game over! The resulting CUE file is too long to send!"
-        
+
         return result
     except:
         return "Game over! Something's wrong with your command."
@@ -423,14 +451,14 @@ async def _rate(interaction: discord.Interaction, thing: str):
         req = requests.get(url)
         if req.status_code != 200:
             return None
-        
+
         text = req.text
         mtch = yt_title_re.search(text)
 
         title = mtch.group('title')
 
         return title
-        
+
     # Get YouTube character sequence from link
     def get_video_chars(l):
         if '?v=' in l:
@@ -452,7 +480,7 @@ async def _rate(interaction: discord.Interaction, thing: str):
             if requests.get(thumbnail).status_code == 404:
                 print("Not valid link")
                 raise Exception("Not a valid YouTube link")
-            
+
             em.set_image(url=thumbnail)
             em.url = "https://youtube.com/watch?v=" + video_id
 
@@ -461,7 +489,7 @@ async def _rate(interaction: discord.Interaction, thing: str):
                 em.description = f"[{vid_title}]({em.url})"
             else:
                 em.description = em.url
-                
+
         except:
             lt = "LINK"  # ...like in here
     if lt == "LINK":
@@ -547,6 +575,9 @@ async def _cue(interaction: discord.Interaction, filename: str, arguments: str):
 async def _cue_repeat(interaction: discord.Interaction, filename: str, repeats: int):
     await interaction.response.send_message(ctry(f'!vib cue "{filename}" *{repeats}'))
 
+
+register_tts_commands(tree)
+
 # -- Legacy commands -- #
 
 # on_message blocks slash commands
@@ -580,6 +611,59 @@ async def on_message(message):
 
     elif msg.startswith("!vib cue"):
         await message.channel.send(ctry(message.content))
+
+    elif msg == "!vib ttsinfo":
+        await message.channel.send(TTS_INFO)
+
+    elif msg.startswith("!vib tts ") or msg.startswith("!vib msheet "):
+        # !vib tts <preset> <bpm> <time_den> <notesheet>
+        parts = message.content.strip().split(maxsplit=5)
+        if len(parts) < 6:
+            await message.channel.send(
+                "Game over! Use: `!vib tts <preset> <bpm> <time_den> <notesheet>`")
+            return
+        try:
+            preset = legacy_tts_preset(parts[2])
+            bpm = int(parts[3])
+            time_den = int(parts[4])
+        except ValueError:
+            await message.channel.send("Game over! BPM and time_den must be numbers.")
+            return
+        except TtsError as error:
+            await message.channel.send(f"Game over! {error}")
+            return
+
+        notesheet = parts[5]
+        await send_legacy_tts_file(
+            message,
+            lambda output: _run_native(
+                "sheet", output, preset=preset, bpm=bpm,
+                time_den=time_den, notesheet=notesheet, romaji=True))
+
+    elif msg.startswith("!vib ttsquick "):
+        # !vib ttsquick <preset> <bpm> <source_note> <phrase>
+        parts = message.content.strip().split(maxsplit=5)
+        if len(parts) < 6:
+            await message.channel.send(
+                "Game over! Use: `!vib ttsquick <preset> <bpm> <source_note> <phrase>`")
+            return
+        try:
+            preset = legacy_tts_preset(parts[2])
+            bpm = int(parts[3])
+        except ValueError:
+            await message.channel.send("Game over! BPM must be a number.")
+            return
+        except TtsError as error:
+            await message.channel.send(f"Game over! {error}")
+            return
+
+        source_note = parts[4]
+        phrase = parts[5]
+        await send_legacy_tts_file(
+            message,
+            lambda output: _run_native(
+                "quick", output, preset=preset, bpm=bpm,
+                source_note=source_note, japanese_phrase=phrase, romaji=True))
 
     elif msg == "!vib growl":
         await message.channel.send(phrases["growl"])
